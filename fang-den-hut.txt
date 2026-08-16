@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1738" />
+<title>Fang den Hut – Digitales Brettspiel</title>
+<style>
+:root{
+  --bg:#071127;
+  --panel:#0e1b3b;
+  --panel2:#12244d;
+  --text:#f7f7f2;
+  --muted:#a9b8d9;
+  --gold:#ffd85c;
+  --gold2:#f1b82d;
+  --safe:#bfc8d4;
+  --danger:#ff6a6a;
+  --ok:#58d68d;
+  --shadow:0 18px 50px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:radial-gradient(circle at 50% 0%,#17346d 0,#0b1738 34%,#050b1a 100%);color:var(--text);font-family:Inter,ui-rounded,"Segoe UI",Arial,sans-serif}
+button,input,select{font:inherit}
+button{border:0;cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.45}
+.hidden{display:none!important}
+.app{min-height:100dvh;padding:14px;display:flex;flex-direction:column;gap:12px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(8,18,43,.78);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(14px);border-radius:20px;padding:10px 12px;box-shadow:var(--shadow);position:sticky;top:8px;z-index:30}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logoMark{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(145deg,var(--gold),#ff8c42);color:#18213a;font-weight:1000;box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 8px 24px rgba(255,186,61,.2)}
+.brandText{min-width:0}.brandText b{display:block;font-size:clamp(16px,2.2vw,22px);letter-spacing:.02em;white-space:nowrap}.brandText small{color:var(--muted)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.iconBtn,.softBtn,.primaryBtn,.dangerBtn{border-radius:13px;padding:10px 13px;font-weight:800;transition:.16s transform,.16s filter,.16s background}
+.iconBtn,.softBtn{color:var(--text);background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.08)}
+.iconBtn:hover,.softBtn:hover,.primaryBtn:hover,.dangerBtn:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.primaryBtn{color:#12182b;background:linear-gradient(145deg,#ffe57f,var(--gold2));box-shadow:0 10px 28px rgba(241,184,45,.22)}
+.dangerBtn{color:white;background:linear-gradient(145deg,#ff6b6b,#d9405a)}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:12px;flex:1;min-height:0}
+.boardCard,.sideCard{background:linear-gradient(160deg,rgba(16,35,77,.94),rgba(7,17,39,.94));border:1px solid rgba(255,255,255,.09);border-radius:24px;box-shadow:var(--shadow)}
+.boardCard{padding:12px;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.turnStrip{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:4px 4px 10px}
+.turnWho{display:flex;align-items:center;gap:10px;min-width:0}
+.playerDot{width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 4px rgba(255,255,255,.08);flex:0 0 auto}
+.turnText b{display:block;font-size:clamp(17px,2vw,24px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.turnText small{color:var(--muted)}
+.diceArea{display:flex;align-items:center;gap:10px}
+.die{width:58px;height:58px;border-radius:15px;background:#fff;color:#10182f;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:3px;padding:8px;box-shadow:inset 0 -5px 12px rgba(0,0,0,.12),0 8px 24px rgba(0,0,0,.28);transform:rotate(2deg);transition:.2s}
+.die.rolling{animation:roll .55s cubic-bezier(.2,.9,.3,1)}
+@keyframes roll{0%{transform:rotate(2deg) scale(1)}25%{transform:rotate(80deg) scale(.9)}55%{transform:rotate(190deg) scale(1.12)}100%{transform:rotate(362deg) scale(1)}}
+.pip{width:9px;height:9px;background:#111b35;border-radius:50%;align-self:center;justify-self:center}.pip.off{visibility:hidden}
+.rollBtn{min-width:116px}
+.boardWrap{position:relative;width:100%;aspect-ratio:1/1;max-height:calc(100dvh - 185px);margin:auto;min-height:360px}
+#boardSvg{width:100%;height:100%;display:block;filter:drop-shadow(0 12px 22px rgba(0,0,0,.2));touch-action:manipulation}
+.boardBg{fill:#08142f;stroke:rgba(255,255,255,.12);stroke-width:4}
+.trackNode{fill:#ffe891;stroke:#7b682c;stroke-width:2.3;transition:.14s;vector-effect:non-scaling-stroke}
+.trackNode.safe{fill:#cbd1db;stroke:#657184}.trackNode.junction{stroke:#fff2a2;stroke-width:4}
+.trackNode.dest{stroke:#69f0ae;stroke-width:6;filter:url(#glowGreen);animation:pulseDest 1.15s ease-in-out infinite}
+.trackNode.dest:hover{fill:#d9ffe9}
+@keyframes pulseDest{50%{stroke-width:10}}
+.trackLine{stroke:#dec56d;stroke-width:16;stroke-linecap:round;opacity:.26}
+.homeCircle{stroke-width:6;stroke:rgba(255,255,255,.75);filter:drop-shadow(0 5px 10px rgba(0,0,0,.3));transition:.15s}
+.homeCircle.selectable{stroke:#69f0ae;stroke-width:10;cursor:pointer;filter:url(#glowGreen)}
+.homeLabel{font-size:20px;font-weight:900;fill:white;text-anchor:middle;paint-order:stroke;stroke:#071127;stroke-width:5px;stroke-linejoin:round}
+.homeCount{font-size:18px;font-weight:800;fill:white;text-anchor:middle;paint-order:stroke;stroke:#071127;stroke-width:4px}
+.tower{cursor:pointer;transform-box:fill-box;transform-origin:center;transition:.14s}.tower:hover{filter:brightness(1.08)}
+.tower.selected{filter:url(#glowGreen)}
+.hatCone{stroke:rgba(255,255,255,.75);stroke-width:2.2;vector-effect:non-scaling-stroke}.hatBase{fill-opacity:.95;stroke:rgba(0,0,0,.28);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.towerCount{font-size:16px;font-weight:1000;fill:white;text-anchor:middle;paint-order:stroke;stroke:#061027;stroke-width:5px}
+.side{display:flex;flex-direction:column;gap:12px;min-height:0}
+.sideCard{padding:14px}.sideTitle{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}.sideTitle h2{margin:0;font-size:17px}.badge{border-radius:999px;padding:5px 9px;background:rgba(255,255,255,.08);color:var(--muted);font-size:12px;font-weight:800}
+.players{display:flex;flex-direction:column;gap:8px}
+.playerCard{border-radius:15px;padding:10px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.07);display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:9px;align-items:center;transition:.15s}
+.playerCard.active{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);transform:translateX(-3px)}
+.pColor{width:13px;height:36px;border-radius:8px}.pName{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pMeta{font-size:12px;color:var(--muted);margin-top:2px}.pScore{text-align:right}.pScore strong{display:block;font-size:20px}.pScore small{color:var(--muted)}
+.actionCard{display:flex;flex-direction:column;gap:8px}.hint{color:var(--muted);font-size:13px;line-height:1.45}.hint strong{color:white}
+.logCard{flex:1;min-height:160px;display:flex;flex-direction:column}.log{overflow:auto;min-height:0;max-height:320px;padding-right:4px;display:flex;flex-direction:column-reverse;gap:6px}.logItem{font-size:12px;line-height:1.4;color:#dce4f6;padding:7px 8px;border-radius:10px;background:rgba(255,255,255,.045)}.logItem b{color:white}
+.footerNote{font-size:11px;color:#7484aa;text-align:center;padding:2px 8px 0}
+.overlay{position:fixed;inset:0;background:rgba(2,7,18,.78);backdrop-filter:blur(14px);z-index:100;display:grid;place-items:center;padding:16px;overflow:auto}
+.modal{width:min(760px,100%);background:linear-gradient(165deg,#162b58,#09152f);border:1px solid rgba(255,255,255,.13);border-radius:28px;box-shadow:0 26px 80px rgba(0,0,0,.55);padding:clamp(18px,4vw,34px)}
+.heroTitle{text-align:center;margin:4px 0 4px;font-size:clamp(34px,7vw,68px);line-height:.92;font-weight:1000;letter-spacing:-.045em;background:linear-gradient(180deg,#fff8c5,#ffd553 65%,#ff9f38);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 8px 26px rgba(255,190,62,.15)}
+.heroSub{text-align:center;color:var(--muted);margin:0 0 22px}.sectionLabel{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#91a5d0;font-weight:900;margin:16px 0 8px}
+.segment{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.segBtn{padding:10px 6px;border-radius:11px;background:rgba(255,255,255,.06);color:white;font-weight:900;border:1px solid rgba(255,255,255,.07)}.segBtn.on{background:linear-gradient(145deg,#ffe67d,#efba2f);color:#12182b}
+.setupGrid{display:grid;gap:8px}.setupRow{display:grid;grid-template-columns:28px minmax(0,1fr) 140px;gap:8px;align-items:center}.colorSwatch{width:22px;height:38px;border-radius:9px}.textInput,.selectInput{width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.07);color:white;padding:10px 11px;outline:none}.textInput:focus,.selectInput:focus{border-color:#ffd75b;box-shadow:0 0 0 3px rgba(255,215,91,.13)}.selectInput option{background:#102147}
+.modeGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.modeBtn{border-radius:15px;padding:12px;background:rgba(255,255,255,.055);color:white;border:1px solid rgba(255,255,255,.08);text-align:left}.modeBtn.on{border-color:#ffd75b;background:rgba(255,215,91,.11)}.modeBtn b{display:block;margin-bottom:3px}.modeBtn small{color:var(--muted);line-height:1.25;display:block}
+.startActions{display:flex;gap:8px;margin-top:18px}.startActions>*{flex:1}.continueBtn{position:relative}.continueBtn::after{content:"gespeichert";position:absolute;right:9px;top:-8px;font-size:10px;background:#4fd69a;color:#09221a;padding:3px 6px;border-radius:999px}
+.modalHead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}.modalHead h2{margin:0}.closeBtn{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.08);color:white;font-size:20px}.rules{color:#dce5f8;line-height:1.5;font-size:14px}.rules h3{color:#ffe07a;margin:18px 0 6px}.rules ul{padding-left:20px}.rules li{margin:5px 0}.rulesNote{padding:10px 12px;background:rgba(255,216,92,.09);border:1px solid rgba(255,216,92,.22);border-radius:12px;color:#ffe9a6}
+.winCard{text-align:center}.winnerHat{font-size:76px;filter:drop-shadow(0 10px 20px rgba(0,0,0,.3));animation:winnerBounce 1.2s ease-in-out infinite}@keyframes winnerBounce{50%{transform:translateY(-8px) rotate(4deg)}}.winCard h2{font-size:clamp(28px,6vw,50px);margin:4px 0}.winCard p{color:var(--muted)}.ranking{display:flex;flex-direction:column;gap:7px;margin:16px 0;text-align:left}.rankRow{display:grid;grid-template-columns:30px 15px minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px;border-radius:12px;background:rgba(255,255,255,.06)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);opacity:0;background:#071127;color:white;border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:10px 15px;z-index:200;box-shadow:var(--shadow);transition:.22s;pointer-events:none;font-weight:800}.toast.show{opacity:1;transform:translate(-50%,0)}
+.confetti{position:fixed;top:-20px;width:10px;height:16px;border-radius:2px;z-index:160;animation:fall linear forwards;pointer-events:none}@keyframes fall{to{transform:translateY(110dvh) rotate(880deg)}}
+@media(max-width:960px){.main{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.logCard{grid-column:1/-1}.boardWrap{max-height:none}.topbar{position:relative;top:auto}}
+@media(max-width:640px){.app{padding:8px}.topbar{border-radius:17px}.brandText small{display:none}.toolbar .label{display:none}.main{gap:8px}.boardCard,.sideCard{border-radius:18px}.boardCard{padding:8px}.turnStrip{grid-template-columns:1fr}.diceArea{justify-content:space-between}.die{width:52px;height:52px}.side{grid-template-columns:1fr}.logCard{display:none}.setupRow{grid-template-columns:24px 1fr 112px}.modeGrid{grid-template-columns:1fr}.segment{grid-template-columns:repeat(5,1fr)}.modal{border-radius:22px;padding:18px}.boardWrap{min-height:320px}.toolbar{gap:5px}.iconBtn{padding:9px 10px}}
+@media(max-width:400px){.rollBtn{min-width:102px}.brandText b{font-size:15px}.logoMark{width:38px;height:38px}.setupRow{grid-template-columns:20px 1fr 104px}.textInput,.selectInput{padding:9px 8px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logoMark">H</div>
+      <div class="brandText"><b>Fang den Hut</b><small>Digitales Brettspiel</small></div>
+    </div>
+    <div class="toolbar">
+      <button class="iconBtn" id="rulesBtn" title="Spielregeln">📖 <span class="label">Regeln</span></button>
+      <button class="iconBtn" id="soundBtn" title="Ton an/aus">🔊</button>
+      <button class="iconBtn" id="fullBtn" title="Vollbild">⛶</button>
+      <button class="iconBtn" id="newBtn" title="Neues Spiel">↻ <span class="label">Neu</span></button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="boardCard">
+      <div class="turnStrip">
+        <div class="turnWho">
+          <span class="playerDot" id="turnDot"></span>
+          <div class="turnText"><b id="turnTitle">Spiel vorbereiten</b><small id="turnSub">Wähle Spieler und starte eine Partie.</small></div>
+        </div>
+        <div class="diceArea">
+          <div class="die" id="die" aria-label="Würfel"><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span></div>
+          <button class="primaryBtn rollBtn" id="rollBtn">🎲 Würfeln</button>
+        </div>
+      </div>
+      <div class="boardWrap"><svg id="boardSvg" viewBox="0 0 1000 1000" role="img" aria-label="Spielbrett"></svg></div>
+    </section>
+
+    <aside class="side">
+      <section class="sideCard">
+        <div class="sideTitle"><h2>Spieler</h2><span class="badge" id="modeBadge">Standard</span></div>
+        <div class="players" id="playersPanel"></div>
+      </section>
+      <section class="sideCard actionCard">
+        <div class="sideTitle"><h2>Dein Zug</h2><span class="badge" id="phaseBadge">–</span></div>
+        <div class="hint" id="hintText">Starte zuerst eine neue Partie.</div>
+        <button class="softBtn hidden" id="skipBtn">Zug überspringen</button>
+        <button class="softBtn" id="undoBtn" disabled>↶ Zug zurück</button>
+      </section>
+      <section class="sideCard logCard">
+        <div class="sideTitle"><h2>Spielverlauf</h2><span class="badge" id="turnBadge">Zug 0</span></div>
+        <div class="log" id="gameLog"></div>
+      </section>
+    </aside>
+  </main>
+  <div class="footerNote">Inoffizielle, eigenständige Browser-Umsetzung. Keine externen Bibliotheken – funktioniert direkt auf GitHub Pages.</div>
+</div>
+
+<div class="overlay" id="setupOverlay">
+  <div class="modal">
+    <div class="heroTitle">FANG DEN HUT</div>
+    <p class="heroSub">Lokal mit Freunden oder gegen Computergegner – direkt im Browser.</p>
+    <div class="sectionLabel">Anzahl Spieler</div>
+    <div class="segment" id="countSegment"></div>
+    <div class="sectionLabel">Spieler</div>
+    <div class="setupGrid" id="setupPlayers"></div>
+    <div class="sectionLabel">Spielmodus</div>
+    <div class="modeGrid" id="modeGrid">
+      <button class="modeBtn on" data-mode="standard"><b>Standard</b><small>Gefangene heimbringen. Am Ende gewinnt die höchste Fangzahl.</small></button>
+      <button class="modeBtn" data-mode="last"><b>Wer übrig bleibt</b><small>Gewinner ist die letzte noch aktive Farbe.</small></button>
+      <button class="modeBtn" data-mode="tower"><b>Der Turm</b><small>Keine Rückkehr nach Hause. Am Ende bleibt ein großer Turm.</small></button>
+    </div>
+    <div class="startActions">
+      <button class="softBtn continueBtn hidden" id="continueBtn">Fortsetzen</button>
+      <button class="primaryBtn" id="startBtn">Spiel starten</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="rulesOverlay">
+  <div class="modal">
+    <div class="modalHead"><h2>Spielregeln</h2><button class="closeBtn" data-close="rulesOverlay">×</button></div>
+    <div class="rules">
+      <div class="rulesNote">Diese Browser-Version setzt die klassische Grundidee digital um und prüft mögliche Züge automatisch.</div>
+      <h3>Ziel</h3>
+      <p>Fange gegnerische Hütchen, indem du mit genauer Würfelzahl auf einem normalen Feld landest, und bringe gefangene Hütchen möglichst sicher nach Hause.</p>
+      <h3>Zugablauf</h3>
+      <ul>
+        <li>Würfeln und anschließend ein eigenes Hütchen oder einen von dir kontrollierten Turm auswählen.</li>
+        <li>Grün markierte Felder sind mögliche Ziele mit exakt dieser Würfelzahl.</li>
+        <li>Du darfst eigene und fremde Hütchen überspringen. Während eines Zuges wird nicht direkt umgedreht.</li>
+        <li>Bei einer 6 erhältst du nach dem Zug einen weiteren Wurf.</li>
+      </ul>
+      <h3>Fangen & Türme</h3>
+      <p>Landest du auf einem normalen Feld bei einer anderen Farbe, werden alle dort stehenden Hütchen bzw. Türme unter dein Hütchen aufgenommen. Das oberste Hütchen kontrolliert den gesamten Turm.</p>
+      <h3>Ruhefelder</h3>
+      <p>Graue Felder sind sicher: Dort wird nicht gefangen. Maximal drei Hütchen/Türme dürfen gleichzeitig auf einem Ruhefeld stehen.</p>
+      <h3>Heimat</h3>
+      <p>Ein Hütchen darf nach dem Verlassen nur dann wieder in die eigene Heimat, wenn es Gefangene transportiert. Gefangene Gegner werden dort gewertet; eigene Hütchen im Turm werden befreit. Überschüssige Würfelpunkte werden weitergezogen.</p>
+      <h3>Spielende</h3>
+      <p><b>Standard:</b> Wenn nur noch eine Farbe aktiv ist, werden auch Gefangene in noch fahrenden Türmen gezählt. Höchste Fangzahl gewinnt. <b>Wer übrig bleibt:</b> Die letzte aktive Farbe gewinnt. <b>Der Turm:</b> Eine Heimkehr ist nicht möglich; die letzte kontrollierende Farbe gewinnt.</p>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="winOverlay">
+  <div class="modal winCard">
+    <div class="winnerHat">🎩</div>
+    <h2 id="winnerTitle">Gewonnen!</h2>
+    <p id="winnerText"></p>
+    <div class="ranking" id="ranking"></div>
+    <div class="startActions"><button class="softBtn" id="closeWinBtn">Brett ansehen</button><button class="primaryBtn" id="rematchBtn">Neue Partie</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+
+const COLORS = [
+  {name:'Rot', hex:'#f04455'},
+  {name:'Blau', hex:'#2e9bff'},
+  {name:'Grün', hex:'#39c879'},
+  {name:'Gelb', hex:'#ffd23f'},
+  {name:'Violett', hex:'#a66cff'},
+  {name:'Türkis', hex:'#23d2c5'}
+];
+const MODE_NAMES = {standard:'Standard', last:'Wer übrig bleibt', tower:'Der Turm'};
+const SAVE_KEY = 'fangDenHutDigital_v3';
+const MAX_HISTORY = 24;
+
+let setupCount = 4;
+let setupMode = 'standard';
+let soundOn = true;
+let state = freshState();
+let board = null;
+let selected = null;
+let legalDestinations = new Map();
+let botTimer = null;
+let audioCtx = null;
+
+const $ = (id) => document.getElementById(id);
+const svg = $('boardSvg');
+
+function freshState(){
+  return {
+    started:false, finished:false, mode:'standard', players:[], home:[], bank:[], occupancy:{},
+    current:0, phase:'roll', die:null, turn:0, towerSeq:1, log:[], history:[], lastMove:null
+  };
+}
+
+function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
+function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+function player(id){ return state.players[id]; }
+function topOwner(tower){ return tower.hats[tower.hats.length-1]; }
+function countEnemyHats(hats, owner){ return hats.reduce((n,h)=>n+(h!==owner?1:0),0); }
+function towerById(id){
+  for(const [nodeId, arr] of Object.entries(state.occupancy)){
+    const t = arr.find(x=>x.id===id); if(t) return {nodeId, tower:t};
+  }
+  return null;
+}
+function allTowers(){
+  const out=[]; for(const [nodeId,arr] of Object.entries(state.occupancy)) for(const tower of arr) out.push({nodeId,tower}); return out;
+}
+function ensureNode(nodeId){ if(!state.occupancy[nodeId]) state.occupancy[nodeId]=[]; return state.occupancy[nodeId]; }
+function addLog(text){ state.log.push(text); if(state.log.length>80) state.log.shift(); }
+function currentPlayer(){ return state.players[state.current]; }
+function isHumanTurn(){ const p=currentPlayer(); return !!p && p.type==='human'; }
+function beep(freq=440,dur=.07,vol=.035){
+  if(!soundOn) return;
+  try{
+    audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.frequency.value=freq; o.type='sine'; g.gain.value=vol; o.connect(g); g.connect(audioCtx.destination); o.start(); g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+dur); o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._x); t._x=setTimeout(()=>t.classList.remove('show'),1700); }
+
+function buildBoard(nPlayers){
+  const large = nPlayers >= 5;
+  const spokes = large ? 6 : 4;
+  const ringCount = large ? 60 : 48;
+  const spokeSteps = 6;
+  const cx=500, cy=500, ringR=355, homeR=455;
+  const nodes={}, edges={};
+  const addNode=(id,x,y,type='normal',meta={})=>{ nodes[id]={id,x,y,type,...meta}; edges[id] ||= []; };
+  const link=(a,b)=>{ if(!edges[a].includes(b)) edges[a].push(b); if(!edges[b].includes(a)) edges[b].push(a); };
+  const angleAt=i=>-Math.PI/2 + (i/ringCount)*Math.PI*2;
+  const segment=ringCount/spokes;
+
+  for(let i=0;i<ringCount;i++){
+    const a=angleAt(i), safe=(i%segment===Math.floor(segment/2));
+    addNode(`r${i}`,cx+Math.cos(a)*ringR,cy+Math.sin(a)*ringR,safe?'safe':'normal',{ring:true,junction:i%segment===0});
+  }
+  for(let i=0;i<ringCount;i++) link(`r${i}`,`r${(i+1)%ringCount}`);
+  addNode('center',cx,cy,'normal',{center:true,junction:true});
+  const junctions=[];
+  for(let s=0;s<spokes;s++){
+    const ringIndex=s*segment; junctions.push(ringIndex);
+    const a=angleAt(ringIndex);
+    let prev=`r${ringIndex}`;
+    for(let j=1;j<=spokeSteps;j++){
+      const frac=j/(spokeSteps+1); const rad=ringR*(1-frac);
+      const safe = j===3;
+      const id=`s${s}_${j}`;
+      addNode(id,cx+Math.cos(a)*rad,cy+Math.sin(a)*rad,safe?'safe':'normal',{spoke:s,junction:false});
+      link(prev,id); prev=id;
+    }
+    link(prev,'center');
+  }
+  const homes=[];
+  for(let p=0;p<nPlayers;p++){
+    const s=p; const ringIndex=junctions[s]; const a=angleAt(ringIndex);
+    homes.push({id:`home-${p}`,playerId:p,entry:`r${ringIndex}`,x:cx+Math.cos(a)*homeR,y:cy+Math.sin(a)*homeR});
+  }
+  return {nodes,edges,homes,ringCount,spokes,ringR,cx,cy};
+}
+
+function renderBoardBase(){
+  if(!board){ svg.innerHTML=''; return; }
+  const defs=`<defs><filter id="glowGreen" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><radialGradient id="bgGrad"><stop offset="0" stop-color="#173468"/><stop offset="1" stop-color="#071229"/></radialGradient></defs>`;
+  let html=defs+`<circle class="boardBg" cx="500" cy="500" r="485" fill="url(#bgGrad)"/>`;
+  const drawn=new Set();
+  for(const [a,neis] of Object.entries(board.edges)){
+    for(const b of neis){ const k=[a,b].sort().join('|'); if(drawn.has(k)) continue; drawn.add(k); const A=board.nodes[a],B=board.nodes[b]; html+=`<line class="trackLine" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}"/>`; }
+  }
+  html+=`<g id="nodesLayer">`;
+  for(const n of Object.values(board.nodes)){
+    const cls=['trackNode',n.type==='safe'?'safe':'',n.junction?'junction':''].filter(Boolean).join(' ');
+    const r=n.center?28:(n.junction?18:14);
+    html+=`<circle id="node-${n.id}" data-node="${n.id}" class="${cls}" cx="${n.x}" cy="${n.y}" r="${r}"/>`;
+  }
+  html+=`</g><g id="homesLayer"></g><g id="piecesLayer"></g>`;
+  svg.innerHTML=html;
+}
+
+function renderDynamicBoard(){
+  if(!board) return;
+  const homesLayer=$('homesLayer'), piecesLayer=$('piecesLayer');
+  let h='';
+  for(const home of board.homes){
+    const p=player(home.playerId); const selectable=state.phase==='move'&&isHumanTurn()&&state.current===home.playerId&&state.home[home.playerId]>0&&homeHasMove(home.playerId);
+    const isDestination=!!selected&&legalDestinations.has(`home-${home.playerId}`);
+    h+=`<g data-home="${home.playerId}" style="cursor:${(selectable||isDestination)?'pointer':'default'}"><circle class="homeCircle ${(selectable||isDestination)?'selectable':''}" cx="${home.x}" cy="${home.y}" r="48" fill="${p.color}"/><text class="homeLabel" x="${home.x}" y="${home.y-2}">${esc(shortName(p.name,7))}</text><text class="homeCount" x="${home.x}" y="${home.y+24}">🏠 ${state.home[home.playerId]}</text></g>`;
+  }
+  homesLayer.innerHTML=h;
+
+  for(const el of svg.querySelectorAll('.trackNode')) el.classList.remove('dest');
+  for(const nodeId of legalDestinations.keys()){ const el=$(`node-${nodeId}`); if(el) el.classList.add('dest'); }
+
+  let ph='';
+  for(const [nodeId,arr] of Object.entries(state.occupancy)){
+    const n=board.nodes[nodeId]; if(!n||!arr.length) continue;
+    const offsets=placementOffsets(arr.length);
+    arr.forEach((tower,i)=>{
+      const top=topOwner(tower), p=player(top); const off=offsets[i]; const x=n.x+off.x,y=n.y+off.y;
+      const selectedCls=selected&&selected.kind==='tower'&&selected.id===tower.id?' selected':'';
+      const canPick=state.phase==='move'&&top===state.current&&getDestinationsForTower(tower.id).size>0;
+      ph+=towerSvg(tower,x,y,p.color,selectedCls,canPick,nodeId);
+    });
+  }
+  piecesLayer.innerHTML=ph;
+
+  homesLayer.querySelectorAll('[data-home]').forEach(el=>el.addEventListener('click',()=>{ const nodeId=`home-${el.dataset.home}`; if(selected&&legalDestinations.has(nodeId)) executeSelectedMove(nodeId); else selectHome(Number(el.dataset.home)); }));
+  piecesLayer.querySelectorAll('[data-tower]').forEach(el=>el.addEventListener('click',e=>{ e.stopPropagation(); const nodeId=el.dataset.node; if(selected&&legalDestinations.has(nodeId)) executeSelectedMove(nodeId); else selectTower(el.dataset.tower); }));
+  svg.querySelectorAll('.trackNode.dest').forEach(el=>el.addEventListener('click',()=>executeSelectedMove(el.dataset.node)));
+}
+
+function placementOffsets(n){
+  if(n<=1) return [{x:0,y:0}];
+  const r=18; return Array.from({length:n},(_,i)=>{const a=-Math.PI/2+i*Math.PI*2/n;return{x:Math.cos(a)*r,y:Math.sin(a)*r};});
+}
+function towerSvg(tower,x,y,color,selectedCls,canPick,nodeId){
+  const count=tower.hats.length, shown=Math.min(count,4); let hats='';
+  for(let k=0;k<shown;k++){
+    const owner=tower.hats[count-shown+k], c=player(owner).color; const dy=(shown-1-k)*-7;
+    hats+=`<ellipse class="hatBase" cx="0" cy="${10+dy}" rx="19" ry="7" fill="${c}"/><path class="hatCone" d="M -14 ${8+dy} L 0 ${-25+dy} L 14 ${8+dy} Z" fill="${c}"/>`;
+  }
+  const badge=count>1?`<circle cx="18" cy="-22" r="12" fill="#071127" stroke="white" stroke-width="2"/><text class="towerCount" x="18" y="-16">${count}</text>`:'';
+  const destCursor=selected&&legalDestinations.has(nodeId);
+  return `<g class="tower${selectedCls}" data-tower="${tower.id}" data-node="${nodeId}" transform="translate(${x} ${y})" style="cursor:${(canPick||destCursor)?'pointer':'default'}">${hats}${badge}</g>`;
+}
+function shortName(s,n){ return s.length>n?s.slice(0,n-1)+'…':s; }
+
+function pathKey(path){ return path.nodes.join('>'); }
+function enumeratePaths(start, steps, owner, carryingStart){
+  const results=[];
+  const walk=(node,remaining,prev,nodes,carrying,passedHome)=>{
+    if(remaining===0){ results.push({nodes:[...nodes],passedHome,carrying}); return; }
+    let neis=[];
+    if(node.startsWith('home-')){
+      neis=[board.homes[owner].entry];
+    }else{
+      neis=[...(board.edges[node]||[])];
+      if(node===board.homes[owner].entry && carrying && state.mode!=='tower') neis.push(`home-${owner}`);
+    }
+    for(const next of neis){
+      if(next===prev && !node.startsWith('home-')) continue;
+      if(next.startsWith('home-') && (!carrying || state.mode==='tower')) continue;
+      let nextCarrying=carrying, nextPassed=passedHome;
+      if(next.startsWith('home-')){ nextCarrying=false; nextPassed=true; }
+      walk(next,remaining-1,node,[...nodes,next],nextCarrying,nextPassed);
+    }
+  };
+  walk(start,steps,null,[start],carryingStart,false);
+  const unique=new Map(); for(const p of results){ const end=p.nodes[p.nodes.length-1]; const k=end+'|'+p.passedHome; if(!unique.has(k)) unique.set(k,p); }
+  return [...unique.values()];
+}
+function legalPath(path, owner){
+  const end=path.nodes[path.nodes.length-1];
+  if(end.startsWith('home-')) return path.passedHome && state.mode!=='tower';
+  const node=board.nodes[end]; if(!node) return false;
+  if(node.type==='safe' && (state.occupancy[end]?.length||0)>=3) return false;
+  return true;
+}
+function destinationsFrom(kind,id){
+  const out=new Map(); if(state.phase!=='move'||!state.die) return out;
+  let owner=state.current,start,carrying=false;
+  if(kind==='home'){
+    if(Number(id)!==owner||state.home[owner]<=0) return out;
+    start=`home-${owner}`;
+  }else{
+    const found=towerById(id); if(!found||topOwner(found.tower)!==owner) return out;
+    start=found.nodeId; carrying=found.tower.hats.length>1;
+  }
+  for(const path of enumeratePaths(start,state.die,owner,carrying)){
+    if(!legalPath(path,owner)) continue;
+    const end=path.nodes[path.nodes.length-1]; if(!out.has(end)) out.set(end,path);
+  }
+  return out;
+}
+function getDestinationsForTower(id){ return destinationsFrom('tower',id); }
+function homeHasMove(pid){ return destinationsFrom('home',pid).size>0; }
+function allLegalMoves(){
+  const moves=[]; const pid=state.current;
+  if(state.home[pid]>0){ for(const [dest,path] of destinationsFrom('home',pid)) moves.push({kind:'home',id:String(pid),dest,path}); }
+  for(const {tower} of allTowers()) if(topOwner(tower)===pid){ for(const [dest,path] of destinationsFrom('tower',tower.id)) moves.push({kind:'tower',id:tower.id,dest,path}); }
+  return moves;
+}
+
+function selectHome(pid){
+  if(!state.started||state.finished||state.phase!=='move'||!isHumanTurn()||pid!==state.current) return;
+  if(state.home[pid]<=0) return;
+  const dest=destinationsFrom('home',pid); if(!dest.size){toast('Mit diesem Hütchen gibt es keinen legalen Zug.');return;}
+  selected={kind:'home',id:String(pid)}; legalDestinations=dest; beep(620,.04,.025); renderAll();
+}
+function selectTower(id){
+  if(!state.started||state.finished||state.phase!=='move'||!isHumanTurn()) return;
+  const found=towerById(id); if(!found||topOwner(found.tower)!==state.current) return;
+  const dest=destinationsFrom('tower',id); if(!dest.size){toast('Dieser Turm kann mit der Würfelzahl nicht ziehen.');return;}
+  selected={kind:'tower',id}; legalDestinations=dest; beep(620,.04,.025); renderAll();
+}
+
+function pushHistory(){
+  const snap=deepClone({...state,history:[]}); state.history.push(snap); if(state.history.length>MAX_HISTORY) state.history.shift();
+}
+function undo(){
+  if(!state.started||!state.history.length||!isHumanTurn()) return;
+  clearTimeout(botTimer); const history=state.history; const snap=history.pop(); const keep=history;
+  state=deepClone(snap); state.history=keep; selected=null; legalDestinations=new Map(); board=buildBoard(state.players.length); renderBoardBase(); save(); renderAll(); toast('Letzter Zug zurückgenommen.');
+}
+
+function rollDice(){
+  if(!state.started||state.finished||state.phase!=='roll') return;
+  if(!isHumanTurn()) return;
+  performRoll();
+}
+function performRoll(){
+  selected=null; legalDestinations=new Map();
+  state.die=1+Math.floor(Math.random()*6); state.phase='move'; state.turn++;
+  addLog(`<b>${esc(currentPlayer().name)}</b> würfelt eine <b>${state.die}</b>.`);
+  animateDie(); beep(340+state.die*55,.09,.03); save(); renderAll();
+  const moves=allLegalMoves();
+  if(!moves.length){
+    addLog(`<b>${esc(currentPlayer().name)}</b> hat keinen möglichen Zug.`); save(); renderAll();
+    if(currentPlayer().type==='bot') botTimer=setTimeout(()=>skipTurn(),700);
+  }else if(currentPlayer().type==='bot') botTimer=setTimeout(()=>botChooseMove(moves),650);
+}
+function animateDie(){ const d=$('die'); d.classList.remove('rolling'); void d.offsetWidth; d.classList.add('rolling'); }
+
+function executeSelectedMove(dest){
+  if(!selected||!legalDestinations.has(dest)||!isHumanTurn()) return;
+  const path=legalDestinations.get(dest); executeMove({...selected,dest,path});
+}
+function executeMove(move){
+  if(state.finished||state.phase!=='move') return;
+  pushHistory();
+  const owner=state.current, p=player(owner); let movingTower;
+  if(move.kind==='home'){
+    if(state.home[owner]<=0) return;
+    state.home[owner]--; movingTower={id:`t${state.towerSeq++}`,hats:[owner]};
+  }else{
+    const found=towerById(move.id); if(!found) return; movingTower=deepClone(found.tower);
+    state.occupancy[found.nodeId]=state.occupancy[found.nodeId].filter(t=>t.id!==move.id);
+  }
+
+  const end=move.path.nodes[move.path.nodes.length-1];
+  let deposited=[];
+  if(move.path.passedHome){
+    deposited=movingTower.hats.filter(h=>h!==owner);
+    const own=movingTower.hats.filter(h=>h===owner).length;
+    state.bank[owner].push(...deposited);
+    const endsAtHome=end.startsWith('home-');
+    if(endsAtHome){ state.home[owner]+=own; movingTower=null; }
+    else{ state.home[owner]+=Math.max(0,own-1); movingTower={id:movingTower.id,hats:[owner]}; }
+    if(deposited.length) addLog(`<b>${esc(p.name)}</b> bringt ${deposited.length} gefangene${deposited.length===1?'s Hütchen':' Hütchen'} nach Hause.`);
+    if(own>1) addLog(`${own-1} eigene Hütchen von <b>${esc(p.name)}</b> werden befreit.`);
+  }
+
+  let captured=0;
+  if(movingTower && !end.startsWith('home-')){
+    const node=board.nodes[end], occupants=ensureNode(end);
+    if(node.type!=='safe' && occupants.length){
+      const foreign=occupants.some(t=>topOwner(t)!==owner);
+      if(foreign){
+        const caught=[]; for(const t of occupants) caught.push(...t.hats);
+        captured=countEnemyHats(caught,owner);
+        movingTower.hats=[...caught,...movingTower.hats];
+        state.occupancy[end]=[];
+        if(captured) addLog(`<b>${esc(p.name)}</b> fängt ${captured} gegnerische${captured===1?'s Hütchen':' Hütchen'}!`);
+      }
+    }
+    ensureNode(end).push(movingTower);
+  }
+
+  state.lastMove={owner,dest:end,captured,deposited:deposited.length,die:state.die};
+  beep(captured?780:510,captured?.12:.06,captured?.045:.028);
+  selected=null; legalDestinations=new Map();
+  const rolledSix=state.die===6; state.die=null;
+  const ended=checkGameEnd();
+  if(!ended){
+    if(rolledSix){ state.phase='roll'; addLog(`<b>${esc(p.name)}</b> darf wegen der 6 noch einmal würfeln.`); }
+    else nextPlayer();
+  }
+  save(); renderAll();
+  if(!state.finished && currentPlayer().type==='bot') scheduleBot();
+}
+
+function skipTurn(){
+  if(!state.started||state.finished||state.phase!=='move') return;
+  const moves=allLegalMoves(); if(moves.length && isHumanTurn()){toast('Du hast noch einen möglichen Zug.');return;}
+  pushHistory(); const rolledSix=state.die===6; addLog(`<b>${esc(currentPlayer().name)}</b> setzt aus.`); state.die=null; selected=null; legalDestinations=new Map();
+  if(rolledSix){state.phase='roll';addLog(`<b>${esc(currentPlayer().name)}</b> darf wegen der 6 erneut würfeln.`);} else nextPlayer();
+  save(); renderAll(); if(!state.finished&&currentPlayer().type==='bot') scheduleBot();
+}
+function nextPlayer(){ state.current=(state.current+1)%state.players.length; state.phase='roll'; }
+
+function activeControllers(){
+  const active=new Set();
+  state.players.forEach((p,i)=>{if(state.home[i]>0) active.add(i);});
+  for(const {tower} of allTowers()) active.add(topOwner(tower));
+  return [...active];
+}
+function boardCaptivesFor(owner){
+  let n=0; for(const {tower} of allTowers()) if(topOwner(tower)===owner) n+=countEnemyHats(tower.hats,owner); return n;
+}
+function scoreFor(owner){ return state.bank[owner].length + boardCaptivesFor(owner); }
+function checkGameEnd(){
+  const active=activeControllers();
+  if(state.turn < state.players.length) return false;
+  if(active.length>1) return false;
+  state.finished=true; state.phase='finished';
+  const ranking=state.players.map((p,i)=>({id:i,name:p.name,color:p.color,score:scoreFor(i),active:active.includes(i)}));
+  if(state.mode==='standard') ranking.sort((a,b)=>b.score-a.score||Number(b.active)-Number(a.active));
+  else ranking.sort((a,b)=>Number(b.active)-Number(a.active)||b.score-a.score);
+  state.winnerId=ranking[0]?.id??0;
+  addLog(`<b>${esc(player(state.winnerId).name)}</b> gewinnt die Partie!`); save();
+  setTimeout(showWinner,320); return true;
+}
+
+function botChooseMove(moves){
+  if(state.finished||currentPlayer().type!=='bot'||state.phase!=='move') return;
+  let best=-1e9, options=[];
+  for(const m of moves){
+    let score=Math.random()*1.2; const owner=state.current;
+    let movingHats=[owner]; if(m.kind==='tower'){ const f=towerById(m.id); if(f) movingHats=f.tower.hats; }
+    if(m.path.passedHome){ score+=countEnemyHats(movingHats,owner)*12 + 5; }
+    if(!m.dest.startsWith('home-')){
+      const node=board.nodes[m.dest]; const occ=state.occupancy[m.dest]||[];
+      if(node.type==='safe') score+=2.2;
+      else if(occ.some(t=>topOwner(t)!==owner)){
+        let cap=0; for(const t of occ) cap+=countEnemyHats(t.hats,owner)+1; score+=cap*10;
+      }
+      score += graphSafetyScore(m.dest,owner)*.35;
+    }
+    if(score>best+.01){best=score;options=[m];} else if(Math.abs(score-best)<.01) options.push(m);
+  }
+  const pick=options[Math.floor(Math.random()*options.length)]||moves[0]; executeMove(pick);
+}
+function graphSafetyScore(nodeId,owner){
+  if(board.nodes[nodeId]?.type==='safe') return 5;
+  let danger=0;
+  const q=[[nodeId,0,null]],seen=new Set([nodeId]);
+  while(q.length){ const [n,d]=q.shift(); if(d>=6) continue; for(const nx of board.edges[n]||[]){ if(seen.has(nx)) continue; seen.add(nx); q.push([nx,d+1,n]); const occ=state.occupancy[nx]||[]; if(occ.some(t=>topOwner(t)!==owner)) danger++; } }
+  return -danger;
+}
+function scheduleBot(){
+  clearTimeout(botTimer); if(state.finished||!state.started||currentPlayer().type!=='bot') return;
+  botTimer=setTimeout(()=>{ if(state.phase==='roll') performRoll(); else {const m=allLegalMoves(); if(m.length) botChooseMove(m); else skipTurn();} },650);
+}
+
+function save(){
+  if(!state.started) return;
+  try{ const copy=deepClone(state); copy.history=(copy.history||[]).slice(-8); localStorage.setItem(SAVE_KEY,JSON.stringify(copy)); }catch(e){}
+}
+function hasSave(){ try{ const x=JSON.parse(localStorage.getItem(SAVE_KEY)); return !!(x&&x.started&&!x.finished&&x.players?.length>=2); }catch(e){return false;} }
+function continueGame(){
+  try{
+    const x=JSON.parse(localStorage.getItem(SAVE_KEY)); if(!x?.started) return;
+    state=x; state.history ||= []; board=buildBoard(state.players.length); selected=null; legalDestinations=new Map(); $('setupOverlay').classList.add('hidden'); renderBoardBase(); renderAll(); if(currentPlayer().type==='bot') scheduleBot();
+  }catch(e){ toast('Gespeichertes Spiel konnte nicht geladen werden.'); }
+}
+
+function startGame(){
+  const rows=[...document.querySelectorAll('.setupRow')].slice(0,setupCount);
+  const players=rows.map((r,i)=>({id:i,name:(r.querySelector('input').value.trim()||`Spieler ${i+1}`).slice(0,20),type:r.querySelector('select').value,color:COLORS[i].hex,colorName:COLORS[i].name}));
+  if(players.every(p=>p.type==='bot')){ players[0].type='human'; toast('Spieler 1 wurde als Mensch gesetzt.'); }
+  const hats=setupCount<=4?6:4;
+  state=freshState(); state.started=true; state.mode=setupMode; state.players=players; state.home=players.map(()=>hats); state.bank=players.map(()=>[]); state.occupancy={}; state.current=0; state.phase='roll';
+  board=buildBoard(players.length); addLog(`Partie mit ${players.length} Spielern gestartet – Modus <b>${MODE_NAMES[state.mode]}</b>.`);
+  $('setupOverlay').classList.add('hidden'); renderBoardBase(); save(); renderAll(); if(currentPlayer().type==='bot') scheduleBot();
+}
+
+function newGame(){
+  clearTimeout(botTimer); if(state.started&&!state.finished && !confirm('Aktuelle Partie beenden und ein neues Spiel starten?')) return;
+  state=freshState(); board=null; selected=null; legalDestinations=new Map(); localStorage.removeItem(SAVE_KEY); initSetup(); $('setupOverlay').classList.remove('hidden'); renderAll();
+}
+
+function showWinner(){
+  if(!state.finished) return;
+  const ranking=state.players.map((p,i)=>({id:i,name:p.name,color:p.color,score:scoreFor(i),active:activeControllers().includes(i)}));
+  if(state.mode==='standard') ranking.sort((a,b)=>b.score-a.score||Number(b.active)-Number(a.active)); else ranking.sort((a,b)=>Number(b.active)-Number(a.active)||b.score-a.score);
+  const w=ranking[0]; $('winnerTitle').textContent=`${w.name} gewinnt!`;
+  $('winnerText').textContent=state.mode==='standard'?`Mit ${w.score} gewerteten gefangenen Hütchen.`:'Die letzte aktive Farbe entscheidet die Partie.';
+  $('ranking').innerHTML=ranking.map((r,i)=>`<div class="rankRow"><b>${i+1}.</b><span class="playerDot" style="background:${r.color}"></span><strong>${esc(r.name)}</strong><span>${r.score} Fang${r.score===1?'':'e'}</span></div>`).join('');
+  $('winOverlay').classList.remove('hidden'); confetti(); beep(660,.18,.04); setTimeout(()=>beep(880,.22,.04),140);
+}
+function confetti(){
+  const colors=['#ffd23f','#f04455','#2e9bff','#39c879','#a66cff','#23d2c5'];
+  for(let i=0;i<56;i++){ const e=document.createElement('i'); e.className='confetti'; e.style.left=Math.random()*100+'vw'; e.style.background=colors[i%colors.length]; e.style.animationDuration=(2.5+Math.random()*2.5)+'s'; e.style.animationDelay=(Math.random()*.6)+'s'; document.body.appendChild(e); setTimeout(()=>e.remove(),5600); }
+}
+
+function renderAll(){
+  renderStatus(); renderPlayers(); renderLog(); if(board) renderDynamicBoard(); renderDie();
+}
+function renderStatus(){
+  const started=state.started;
+  $('rollBtn').disabled=!started||state.finished||state.phase!=='roll'||!isHumanTurn();
+  $('rollBtn').textContent=state.phase==='move'?'🎲 Gewürfelt':'🎲 Würfeln';
+  $('skipBtn').classList.toggle('hidden',!(started&&!state.finished&&state.phase==='move'&&isHumanTurn()&&allLegalMoves().length===0));
+  $('undoBtn').disabled=!started||!state.history?.length||!isHumanTurn();
+  $('modeBadge').textContent=started?MODE_NAMES[state.mode]:'Standard';
+  $('turnBadge').textContent=`Zug ${state.turn||0}`;
+  if(!started){ $('turnTitle').textContent='Spiel vorbereiten'; $('turnSub').textContent='Wähle Spieler und starte eine Partie.'; $('turnDot').style.background='#8c9abc'; $('phaseBadge').textContent='–'; $('hintText').innerHTML='Starte zuerst eine neue Partie.'; return; }
+  const p=currentPlayer(); $('turnDot').style.background=p.color; $('turnTitle').textContent=state.finished?'Partie beendet':`${p.name} ist dran`;
+  if(state.finished){$('turnSub').textContent='Die Partie ist beendet.';$('phaseBadge').textContent='Ende';$('hintText').innerHTML='Die Partie ist beendet. Du kannst das Brett noch ansehen oder eine neue Partie starten.';return;}
+  const bot=p.type==='bot';
+  if(state.phase==='roll'){
+    $('turnSub').textContent=bot?'Computer denkt …':'Würfle, um deinen Zug zu beginnen.'; $('phaseBadge').textContent='Würfeln'; $('hintText').innerHTML=bot?`<strong>${esc(p.name)}</strong> übernimmt diesen Zug automatisch.`:`Klicke auf <strong>Würfeln</strong>. Bei einer 6 darfst du danach noch einmal würfeln.`;
+  }else{
+    const moves=allLegalMoves(); $('turnSub').textContent=`Gewürfelt: ${state.die}`; $('phaseBadge').textContent=`🎲 ${state.die}`;
+    if(bot) $('hintText').innerHTML=`<strong>${esc(p.name)}</strong> wählt gerade einen Zug …`;
+    else if(!moves.length) $('hintText').innerHTML=`Mit der <strong>${state.die}</strong> gibt es keinen legalen Zug. Du musst aussetzen.`;
+    else if(!selected) $('hintText').innerHTML=`Wähle ein <strong>Hütchen oder einen Turm</strong>. Danach werden alle erreichbaren Zielfelder grün markiert.`;
+    else $('hintText').innerHTML=`Wähle jetzt eines der <strong>grün markierten Zielfelder</strong>.`;
+  }
+}
+function renderPlayers(){
+  if(!state.started){$('playersPanel').innerHTML='<div class="hint">Noch keine Partie gestartet.</div>';return;}
+  $('playersPanel').innerHTML=state.players.map((p,i)=>{
+    const score=scoreFor(i), active=i===state.current&&!state.finished;
+    return `<div class="playerCard ${active?'active':''}"><span class="pColor" style="background:${p.color}"></span><div><div class="pName">${esc(p.name)} ${p.type==='bot'?'🤖':''}</div><div class="pMeta">🏠 ${state.home[i]} · Gefangen zuhause: ${state.bank[i].length}</div></div><div class="pScore"><strong>${score}</strong><small>Fänge</small></div></div>`;
+  }).join('');
+}
+function renderLog(){ $('gameLog').innerHTML=(state.log||[]).slice().reverse().map(x=>`<div class="logItem">${x}</div>`).join(''); }
+function renderDie(){
+  const v=state.die||0; const patterns={0:[],1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+  [...$('die').children].forEach((p,i)=>p.classList.toggle('off',!patterns[v].includes(i)));
+}
+
+function initSetup(){
+  $('countSegment').innerHTML=[2,3,4,5,6].map(n=>`<button class="segBtn ${n===setupCount?'on':''}" data-count="${n}">${n}</button>`).join('');
+  $('countSegment').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{setupCount=Number(b.dataset.count);initSetup();}));
+  let rows=''; for(let i=0;i<6;i++){
+    rows+=`<div class="setupRow ${i>=setupCount?'hidden':''}"><span class="colorSwatch" style="background:${COLORS[i].hex}"></span><input class="textInput" maxlength="20" value="${i===0?'Spieler 1':`Spieler ${i+1}`}" aria-label="Name Spieler ${i+1}"><select class="selectInput" aria-label="Typ Spieler ${i+1}"><option value="human">Mensch</option><option value="bot" ${i>0?'selected':''}>Computer</option></select></div>`;
+  }
+  $('setupPlayers').innerHTML=rows;
+  $('modeGrid').querySelectorAll('.modeBtn').forEach(b=>b.classList.toggle('on',b.dataset.mode===setupMode));
+  $('continueBtn').classList.toggle('hidden',!hasSave());
+}
+
+function toggleSound(){ soundOn=!soundOn; $('soundBtn').textContent=soundOn?'🔊':'🔇'; if(soundOn)beep(520,.05,.025); }
+function toggleFull(){ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); }
+
+$('startBtn').addEventListener('click',startGame);
+$('continueBtn').addEventListener('click',continueGame);
+$('rollBtn').addEventListener('click',rollDice);
+$('skipBtn').addEventListener('click',skipTurn);
+$('undoBtn').addEventListener('click',undo);
+$('newBtn').addEventListener('click',newGame);
+$('rulesBtn').addEventListener('click',()=>$('rulesOverlay').classList.remove('hidden'));
+$('soundBtn').addEventListener('click',toggleSound);
+$('fullBtn').addEventListener('click',toggleFull);
+$('closeWinBtn').addEventListener('click',()=>$('winOverlay').classList.add('hidden'));
+$('rematchBtn').addEventListener('click',()=>{ $('winOverlay').classList.add('hidden'); newGame(); });
+$('rulesOverlay').addEventListener('click',e=>{if(e.target===$('rulesOverlay'))$('rulesOverlay').classList.add('hidden');});
+$('winOverlay').addEventListener('click',e=>{if(e.target===$('winOverlay'))$('winOverlay').classList.add('hidden');});
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>$(`${b.dataset.close}`).classList.add('hidden')));
+$('modeGrid').querySelectorAll('.modeBtn').forEach(b=>b.addEventListener('click',()=>{setupMode=b.dataset.mode;$('modeGrid').querySelectorAll('.modeBtn').forEach(x=>x.classList.toggle('on',x===b));}));
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ $('rulesOverlay').classList.add('hidden'); $('winOverlay').classList.add('hidden'); }
+  if((e.code==='Space'||e.key==='Enter')&&state.started&&!state.finished&&state.phase==='roll'&&isHumanTurn()&&!e.target.matches('input,select,button')){e.preventDefault();rollDice();}
+});
+
+initSetup(); renderAll();
+})();
+</script>
+</body>
+</html>
